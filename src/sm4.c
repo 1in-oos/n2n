@@ -5,7 +5,7 @@
        > Created Time: Thu Apr 13 23:55:50 2017
 ************************************************************************/
 
-#include "sm4.h"
+#include <sm4.h>
 #include <string.h>
 #include <stdio.h>
 

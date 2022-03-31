@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "sm4.h": "c",
+        "n2n.h": "c",
+        "header_encryption.h": "c"
+    }
+}

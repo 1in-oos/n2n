@@ -125,6 +125,7 @@ const char* transop_str (enum n2n_transform tr) {
         case N2N_TRANSFORM_ID_AES:     return("AES");
         case N2N_TRANSFORM_ID_CHACHA20:return("ChaCha20");
         case N2N_TRANSFORM_ID_SPECK:   return("Speck");
+        case N2N_TRANSFORM_ID_SM4:   return("SM4");	
         default:                       return("invalid");
     };
 }

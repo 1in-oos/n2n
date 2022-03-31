@@ -421,9 +421,10 @@ static void setPayloadEncryption (n2n_edge_conf_t *conf, int cipher) {
             conf->transop_id = N2N_TRANSFORM_ID_SPECK;
             break;
         }
-		 case 6: {
-            conf->transop_id = N2N_TRANSFORM_ID_SM4;
-            break;
+		
+	case 6: {
+	     conf->transop_id = N2N_TRANSFORM_ID_SM4;
+              break;
         }
 
         default: {
