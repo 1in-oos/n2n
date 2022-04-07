@@ -260,8 +260,10 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 {
 	int i;
 	unsigned char temp[16];
-    unsigned char *iv1;
-	iv1=iv; 
+    unsigned char iv1[16];
+	for(i=0;i<16;i++){
+		iv1[i]=iv[i];
+	} 
 	if ( mode == SM4_ENCRYPT )
 	{
 		while ( length > 0 )
@@ -289,7 +291,7 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 			sm4_one_round( ctx->sk, input, output );
 
 			for ( i = 0; i < 16; i++ )
-				output[i] = (unsigned char)( output[i] ^ iv[i] );
+				output[i] = (unsigned char)( output[i] ^ iv1[i] );
 
 			memcpy( iv1, temp, 16 );
 
