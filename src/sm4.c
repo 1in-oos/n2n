@@ -254,16 +254,14 @@ void sm4_crypt_ecb( sm4_context_t *ctx,
 void sm4_crypt_cbc( sm4_context_t *ctx,
                     int mode,
                     int length,
-                    unsigned char iv[16],
+                    const unsigned char *iv,
                     unsigned char *input,
                     unsigned char *output )
 {
 	int i;
 	unsigned char temp[16];
     unsigned char iv1[16];
-	for(i=0;i<16;i++){
-		iv1[i]=iv[i];
-	} 
+    memcpy(iv1,iv,16);
 	if ( mode == SM4_ENCRYPT )
 	{
 		while ( length > 0 )

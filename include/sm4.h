@@ -71,7 +71,7 @@ void sm4_crypt_ecb( sm4_context_t *ctx,
 void sm4_crypt_cbc( sm4_context_t *ctx,
                     int mode,
                     int length,
-                    unsigned char iv[16],
+                    const unsigned char *iv,
                     unsigned char *input,
                     unsigned char *output );
 

@@ -73,8 +73,7 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
 
     // the assembly buffer is a source for encrypting data
     // the whole contents of assembly are encrypted
-    //���򼯻������Ǽ������ݵ�Դ
-    //����ȫ�����ݶ��Ǽ��ܵ� 
+
     
     uint8_t assembly[N2N_PKT_BUF_SIZE];
     size_t idx = 0;
@@ -87,33 +86,33 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             traceEvent(TRACE_DEBUG, "transop_encode_sm4 %lu bytes plaintext", in_len);
 
             // full block sized random value (128 bit)
-            //ȫ���С�����ֵ��128λ��
+            //全块大小的随机值（128位）
             encode_uint64(assembly, &idx, n2n_rand());
             encode_uint64(assembly, &idx, n2n_rand());
 
             // adjust for maybe differently chosen SM4_PREAMBLE_SIZE
-            //���ݿ��ܲ�ͬ��SM4_PREAMBLE_SIZE  ���е���
+            //根据可能不同的SM4_大小进行调整
             idx = SM4_PREAMBLE_SIZE;
 
-            // the plaintext data  ����
+            // the plaintext data明文
             encode_buf(assembly, &idx, inbuf, in_len);
 
-            // round up to next whole AES block size�������뵽��һ��������AES���С
+            // round up to next whole AES block size四舍五入到下一个完整的AES块大小
             padded_len = (((idx - 1) / SM4_BLOCK_SIZE) + 1) * SM4_BLOCK_SIZE;
             padding = (padded_len-idx);
 
             // pad the following bytes with zero, fixed length (AES_BLOCK_SIZE) seems to compile
             // to slightly faster code than run-time dependant 'padding'
-            //ʹ�ö�������ֽڱȱ���ʱ����
+            //使用零固定长度（AES_BLOCK_SIZE）填充以下字节似乎比依赖于运行时的“填充”编译为稍快的代码
             memset(assembly + idx, 0, SM4_BLOCK_SIZE);
-
- 	        //ossl_sm4_encrypt(outbuf, assembly, padded_len, sm4_null_iv, priv->ctx);
+            //int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,const unsigned char *iv, aes_context_t *ctx) 
+ 	        //aes_cbc_encrypt(outbuf, assembly, padded_len, aes_null_iv, priv->ctx);
 	        //void sm4_crypt_cbc( sm4_context *ctx, int mode,int length,unsigned char iv[16],unsigned char *input, unsigned char *output );
 	         sm4_crypt_cbc( priv->ctx,1,padded_len,sm4_null_iv,assembly, outbuf);	
 
 				
             if(padding) {
-                // exchange last two cipher blocks����������������
+                // exchange last two cipher blocks交换最后两个密码块
                 memcpy(buf, outbuf+padded_len - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
                 memcpy(outbuf + padded_len - SM4_BLOCK_SIZE, outbuf + padded_len - 2 * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
                 memcpy(outbuf + padded_len - 2 * SM4_BLOCK_SIZE, buf, SM4_BLOCK_SIZE);
