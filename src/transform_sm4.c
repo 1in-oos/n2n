@@ -30,7 +30,7 @@
 
 // cts/cbc mode is being used with random value prepended to plaintext
 // instead of iv so, actual iv is aes_null_iv
-uint8_t sm4_null_iv[SM4_IV_SIZE] = { 0 };
+uint8_t sm4_null_iv[SM4_IV_SIZE] = { 1 };
 
 typedef struct transop_sm4 {
     sm4_context_t       *ctx;
@@ -104,11 +104,11 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
 
             // pad the following bytes with zero, fixed length (AES_BLOCK_SIZE) seems to compile
             // to slightly faster code than run-time dependant 'padding'
-           //ʹ�ö�������ֽڱȱ���ʱ����
+            //ʹ�ö�������ֽڱȱ���ʱ����
             memset(assembly + idx, 0, SM4_BLOCK_SIZE);
 
- 	 //ossl_sm4_encrypt(outbuf, assembly, padded_len, sm4_null_iv, priv->ctx);
-	    //   void sm4_crypt_cbc( sm4_context *ctx, int mode,int length,unsigned char iv[16],unsigned char *input, unsigned char *output );
+ 	        //ossl_sm4_encrypt(outbuf, assembly, padded_len, sm4_null_iv, priv->ctx);
+	        //void sm4_crypt_cbc( sm4_context *ctx, int mode,int length,unsigned char iv[16],unsigned char *input, unsigned char *output );
 	         sm4_crypt_cbc( priv->ctx,1,padded_len,sm4_null_iv,assembly, outbuf);	
 
 				
@@ -152,7 +152,7 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
         if(rest) { /* cipher text stealing ������ȡ*/
             penultimate_block = ((in_len / SM4_BLOCK_SIZE) - 1) * SM4_BLOCK_SIZE;
 
-            // everything normal up to penultimate block /һ�������������ڶ���
+            // everything normal up to penultimate block  一切正常到倒数第二个街区
             memcpy(assembly, inbuf, penultimate_block);
 
             // prepare new penultimate block in buf 准备新的倒数第二块         
@@ -161,10 +161,10 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
  	        sm4_crypt_ecb(priv->ctx,0,SM4_BLOCK_SIZE,inbuf+penultimate_block,buf);
             memcpy(buf, inbuf + in_len - rest, rest);
            
-            // former penultimate block becomes new ultimate block//ǰ�����ڶ����� ������µĿ�
+            // former penultimate block becomes new ultimate block 前倒数第二个街区变成了新的终极街区
             memcpy(assembly + penultimate_block + SM4_BLOCK_SIZE, inbuf + penultimate_block, SM4_BLOCK_SIZE);
 
-            // write new penultimate block from buf       ��buf��д���µĵ����ڶ�����
+            // write new penultimate block from buf       从buf中写入新的倒数第二个块
             memcpy(assembly + penultimate_block, buf, SM4_BLOCK_SIZE);
 
             // regular cbc decryption of the re-arranged ciphertext//重新排列的密文的常规cbc解密
@@ -210,7 +210,7 @@ static int  setup_sm4_key (transop_sm4_t *priv, const uint8_t *password, ssize_t
     //sm4_setkey_enc( sm4_context *ctx, unsigned char key[16] );
     	
 	sm4_setkey_enc( (priv->ctx), key);
-    
+
     return 0;
 }
 

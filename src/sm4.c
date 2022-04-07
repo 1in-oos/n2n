@@ -260,7 +260,7 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 {
 	int i;
 	unsigned char temp[16];
-
+     
 	if ( mode == SM4_ENCRYPT )
 	{
 		while ( length > 0 )

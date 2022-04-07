@@ -3,5 +3,6 @@
         "sm4.h": "c",
         "n2n.h": "c",
         "header_encryption.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }
