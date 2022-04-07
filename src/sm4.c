@@ -246,7 +246,6 @@ void sm4_crypt_ecb( sm4_context_t *ctx,
 		output += 16;
 		length -= 16;
 	}
-
 }
 
 /*
@@ -279,6 +278,10 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 	}
 	else /* SM4_DECRYPT */
 	{
+		for ( i = 0; i < 16; i ++ )
+	    {
+		SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
 		while ( length > 0 )
 		{
 			memcpy( temp, input, 16 );
