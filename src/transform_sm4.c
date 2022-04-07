@@ -30,7 +30,7 @@
 
 // cts/cbc mode is being used with random value prepended to plaintext
 // instead of iv so, actual iv is aes_null_iv
-uint8_t sm4_null_iv[SM4_IV_SIZE] = { 1 };
+const uint8_t sm4_null_iv[SM4_IV_SIZE] = { 0 };
 
 typedef struct transop_sm4 {
     sm4_context_t       *ctx;

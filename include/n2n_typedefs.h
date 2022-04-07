@@ -574,7 +574,7 @@ typedef enum n2n_transform {
     N2N_TRANSFORM_ID_AES =      3,
     N2N_TRANSFORM_ID_CHACHA20 = 4,
     N2N_TRANSFORM_ID_SPECK =    5,
-    N2N_TRANSFORM_ID_SM4 =    6,
+    N2N_TRANSFORM_ID_SM4 =      6,
 } n2n_transform_t;
 
 struct n2n_trans_op; /* Circular definition */
