@@ -52,11 +52,9 @@ static int transop_deinit_sm4 (n2n_trans_op_t *arg) {
 
 
 // the aes packet format consists of
-//AES�����ݸ�ʽ����
 //  - a random AES_PREAMBLE_SIZE-sized value prepended to plaintext
 //    encrypted together with the...
 //  - ... payload data
-//һ�������ǰ����������һ�����
 //  [VV|DDDDDDDDDDDDDDDDDDDDD]
 //  | <---- encrypted ---->  |
 //
@@ -73,7 +71,8 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
 
     // the assembly buffer is a source for encrypting data
     // the whole contents of assembly are encrypted
-
+    //程序集缓冲区是加密数据的源
+    //汇编的全部内容都是加密的
     
     uint8_t assembly[N2N_PKT_BUF_SIZE];
     size_t idx = 0;
@@ -90,14 +89,14 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             encode_uint64(assembly, &idx, n2n_rand());
             encode_uint64(assembly, &idx, n2n_rand());
 
-            // adjust for maybe differently chosen SM4_PREAMBLE_SIZE
+            // adjust for maybe differently chosen SM4_PREAMBLE_SIZE前置区
             //根据可能不同的SM4_大小进行调整
-            idx = SM4_PREAMBLE_SIZE;
+            idx = SM4_PREAMBLE_SIZE;//16
 
             // the plaintext data明文
             encode_buf(assembly, &idx, inbuf, in_len);
 
-            // round up to next whole AES block size四舍五入到下一个完整的AES块大小
+            // round up to next whole AES block size取整到下一个完整的AES块大小
             padded_len = (((idx - 1) / SM4_BLOCK_SIZE) + 1) * SM4_BLOCK_SIZE;
             padding = (padded_len-idx);
 
@@ -108,7 +107,7 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             //int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,const unsigned char *iv, aes_context_t *ctx) 
  	        //aes_cbc_encrypt(outbuf, assembly, padded_len, aes_null_iv, priv->ctx);
 	        //void sm4_crypt_cbc( sm4_context *ctx, int mode,int length,unsigned char iv[16],unsigned char *input, unsigned char *output );
-	         sm4_crypt_cbc( priv->ctx,1,padded_len,sm4_null_iv,assembly, outbuf);	
+	        sm4_crypt_cbc( priv->ctx,1,padded_len,sm4_null_iv,assembly, outbuf);	
 
 				
             if(padding) {
@@ -126,7 +125,7 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
 }
 
 
-// see transop_encode_sm4 for packet format   ���ݰ���ʽ��transop_encode_sm4
+// see transop_encode_sm4 for packet format 数据包格式
 static int transop_decode_sm4 (n2n_trans_op_t *arg,
                                uint8_t *outbuf,
                                size_t out_len,
@@ -138,17 +137,17 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
     uint8_t rest;
-    size_t penultimate_block;
+    size_t penultimate_block;//倒数第二个
     uint8_t buf[SM4_BLOCK_SIZE];
     int len = -1;
 
-     if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly �����ı��ʺϻ��*/
-      && (in_len >= SM4_PREAMBLE_SIZE)                     /* has at least random number ������һ�������*/
-      && (in_len >= SM4_BLOCK_SIZE)) {                     /* minimum size requirement for cipher text stealing ������ȡ����С�ߴ�Ҫ��*/
+     if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly 密文适合汇编*/
+      && (in_len >= SM4_PREAMBLE_SIZE)                     /* has at least random number至少有一个随机数*/
+      && (in_len >= SM4_BLOCK_SIZE)) {                     /* minimum size requirement for cipher text stealing 密文获取的最小尺寸要求*/
         traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
 
         rest = in_len % SM4_BLOCK_SIZE;
-        if(rest) { /* cipher text stealing ������ȡ*/
+        if(rest) { /* cipher text stealing 密文窃取*/
             penultimate_block = ((in_len / SM4_BLOCK_SIZE) - 1) * SM4_BLOCK_SIZE;
 
             // everything normal up to penultimate block  一切正常到倒数第二个街区
@@ -157,7 +156,7 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
             // prepare new penultimate block in buf 准备新的倒数第二块         
   	        //  ossl_sm4_decrypt(buf, inbuf + penultimate_block, priv->ctx);
  	        //  void sm4_crypt_ecb( sm4_context *ctx,int mode, int length, unsigned char *input,unsigned char *output);
- 	        sm4_crypt_ecb(priv->ctx,0,SM4_BLOCK_SIZE,inbuf+penultimate_block,buf);
+ 	        sm4_crypt_ecb(priv->ctx,0,penultimate_block,inbuf+penultimate_block,buf);
             memcpy(buf, inbuf + in_len - rest, rest);
            
             // former penultimate block becomes new ultimate block 前倒数第二个街区变成了新的终极街区
@@ -174,7 +173,7 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
 		   
             // check for expected zero padding and give a warning otherwise//检查预期的零填充，否则给出警告
             if(memcmp(assembly + in_len, sm4_null_iv, SM4_BLOCK_SIZE - rest)) {
-                traceEvent(TRACE_WARNING, "transop_decode_sm4 payload decryption failed with unexpected cipher text stealing padding");
+                traceEvent(TRACE_WARNING, "transop_decode_sm4 payload decryption failed with unexpected cipher text stealing padding");//有效负载解密失败，密码文本被意外窃取
                 return -1;
             }
         } else {
