@@ -1,5 +1,5 @@
 /**
- * (C) 2007-21 - ntop.org and contributors
+ * (C) 2007-22 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,19 +18,20 @@
 
 
 #include "n2n.h"
-#include"sm4.h"
+#include <sm4.h>
 
-// size of random value prepended to plaintext defaults to SM4 BLOCK_SIZE;
+// size of random value prepended to plaintext defaults to AES BLOCK_SIZE;
 // gradually abandoning security, lower values could be chosen;
 // however, minimum transmission size with cipher text stealing scheme is one
 // block; as network packets should be longer anyway, only low level programmer
 // might encounter an issue with lower values here
+
 #define SM4_PREAMBLE_SIZE       (SM4_BLOCK_SIZE)
 
 
 // cts/cbc mode is being used with random value prepended to plaintext
-// instead of iv so, actual iv is aes_null_iv
-const uint8_t sm4_null_iv[SM4_IV_SIZE] = { 0 };
+// instead of iv so, actual iv is sm4_null_iv
+uint8_t sm4_iv[SM4_IV_SIZE] ;
 
 typedef struct transop_sm4 {
     sm4_context_t       *ctx;
@@ -42,7 +43,7 @@ static int transop_deinit_sm4 (n2n_trans_op_t *arg) {
     transop_sm4_t *priv = (transop_sm4_t *)arg->priv;
 
     if(priv->ctx)
-        sm4_deinit(priv->ctx);
+        free(priv->ctx);
 
     if(priv)
         free(priv);
@@ -51,15 +52,15 @@ static int transop_deinit_sm4 (n2n_trans_op_t *arg) {
 }
 
 
-// the aes packet format consists of
+// the sm4 packet format consists of
+//
 //  - a random AES_PREAMBLE_SIZE-sized value prepended to plaintext
 //    encrypted together with the...
 //  - ... payload data
+//
 //  [VV|DDDDDDDDDDDDDDDDDDDDD]
 //  | <---- encrypted ---->  |
 //
-
-
 static int transop_encode_sm4 (n2n_trans_op_t *arg,
                                uint8_t *outbuf,
                                size_t out_len,
@@ -71,47 +72,56 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
 
     // the assembly buffer is a source for encrypting data
     // the whole contents of assembly are encrypted
-    //程序集缓冲区是加密数据的源
-    //汇编的全部内容都是加密的
-    
     uint8_t assembly[N2N_PKT_BUF_SIZE];
     size_t idx = 0;
     int padded_len;
     uint8_t padding;
     uint8_t buf[SM4_BLOCK_SIZE];
-
+    int i;
+    uint64_t iv_seed = 0;
     if(in_len <= N2N_PKT_BUF_SIZE) {
         if((in_len + SM4_PREAMBLE_SIZE + SM4_BLOCK_SIZE) <= out_len) {
             traceEvent(TRACE_DEBUG, "transop_encode_sm4 %lu bytes plaintext", in_len);
-
+	        printf("sm4 enc start\n");
             // full block sized random value (128 bit)
-            //全块大小的随机值（128位）
-            encode_uint64(assembly, &idx, n2n_rand());
-            encode_uint64(assembly, &idx, n2n_rand());
 
-            // adjust for maybe differently chosen SM4_PREAMBLE_SIZE前置区
-            //根据可能不同的SM4_大小进行调整
-            idx = SM4_PREAMBLE_SIZE;//16
+            //iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
+	        //encode_buf(outbuf, &idx, &iv_seed, SM4_IV_SIZE);
+            encode_uint64(outbuf, &idx, n2n_rand());
+            encode_uint64(outbuf, &idx, n2n_rand());
 
-            // the plaintext data明文
+	        memcpy(sm4_iv,outbuf,sizeof(sm4_iv));
+	        idx=0;
+	        printf("iv is ");
+	        for(i=0;i<16;i++){
+		        printf("0x%x ",(uint8_t)sm4_iv);
+	        }
+	        printf("v len is %d\n",sizeof(sm4_iv));
+
+            // the plaintext data
             encode_buf(assembly, &idx, inbuf, in_len);
+            printf("assemblyf is ");
+            for(i=0;i<N2N_PKT_BUF_SIZE;i++){
+                printf("0x%x ",assembly[i]);
+            }
+            printf("\n");
 
-            // round up to next whole AES block size取整到下一个完整的AES块大小
             padded_len = (((idx - 1) / SM4_BLOCK_SIZE) + 1) * SM4_BLOCK_SIZE;
             padding = (padded_len-idx);
 
             // pad the following bytes with zero, fixed length (AES_BLOCK_SIZE) seems to compile
             // to slightly faster code than run-time dependant 'padding'
-            //使用零固定长度（AES_BLOCK_SIZE）填充以下字节似乎比依赖于运行时的“填充”编译为稍快的代码
             memset(assembly + idx, 0, SM4_BLOCK_SIZE);
-            //int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,const unsigned char *iv, aes_context_t *ctx) 
- 	        //aes_cbc_encrypt(outbuf, assembly, padded_len, aes_null_iv, priv->ctx);
-	        //void sm4_crypt_cbc( sm4_context *ctx, int mode,int length,unsigned char iv[16],unsigned char *input, unsigned char *output );
-	        sm4_crypt_cbc( priv->ctx,1,padded_len,sm4_null_iv,assembly, outbuf);	
 
-				
+	        sm4_crypt_cbc(priv->ctx,SM4_ENCRYPT,idx+padding, sm4_iv,assembly,outbuf+SM4_IV_SIZE);
+	        printf("outbuf is ");
+            for(i=0;i<N2N_PKT_BUF_SIZE;i++){
+                printf("0x%x ",outbuf[i]);
+            }
+            printf("\n");
+
             if(padding) {
-                // exchange last two cipher blocks交换最后两个密码块
+                // exchange last two cipher blocks
                 memcpy(buf, outbuf+padded_len - SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
                 memcpy(outbuf + padded_len - SM4_BLOCK_SIZE, outbuf + padded_len - 2 * SM4_BLOCK_SIZE, SM4_BLOCK_SIZE);
                 memcpy(outbuf + padded_len - 2 * SM4_BLOCK_SIZE, buf, SM4_BLOCK_SIZE);
@@ -120,12 +130,13 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             traceEvent(TRACE_ERROR, "transop_encode_sm4 outbuf too small");
     } else
     traceEvent(TRACE_ERROR, "transop_encode_sm4 inbuf too big to encrypt");
+    idx=idx+SM4_IV_SIZE+padding;
 
     return idx;
 }
 
 
-// see transop_encode_sm4 for packet format 数据包格式
+// see transop_encode_sm4 for packet format
 static int transop_decode_sm4 (n2n_trans_op_t *arg,
                                uint8_t *outbuf,
                                size_t out_len,
@@ -137,27 +148,24 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
     uint8_t rest;
-    size_t penultimate_block;//倒数第二个
-    uint8_t buf[SM4_BLOCK_SIZE];
+    size_t penultimate_block;
+    uint8_t buf[AES_BLOCK_SIZE];
     int len = -1;
 
-     if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly 密文适合汇编*/
-      && (in_len >= SM4_PREAMBLE_SIZE)                     /* has at least random number至少有一个随机数*/
-      && (in_len >= SM4_BLOCK_SIZE)) {                     /* minimum size requirement for cipher text stealing 密文获取的最小尺寸要求*/
+     if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly */
+      && (in_len >= SM4_PREAMBLE_SIZE)                     /* has at least random number */
+      && (in_len >= SM4_BLOCK_SIZE)) {                     /* minimum size requirement for cipher text stealing */
+	    printf("sm4 dec start\n");
         traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
+	    memcpy(buf,inbuf+in_len-SM4_BLOCK_SIZE,SM4_BLOCK_SIZE);
+	    memcpy(inbuf+in_len-SM4_BLOCK_SIZE,inbuf+in_len-2*SM4_BLOCK_SIZE,SM4_BLOCK_SIZE);
+	    memcpy(inbuf+in_len-2*SM4_BLOCK_SIZE,buf,SM4_BLOCK_SIZE);
+        
+	    memcpy(sm4_iv,inbuf,sizeof(sm4_iv));
 
-        rest = in_len % SM4_BLOCK_SIZE;
-        if(rest) { /* cipher text stealing 密文窃取*/
-            traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
-            return -1;
-        } else {
-            // regular cbc decryption on multiple block-sized payload多块大小有效负载上的常规cbc解密
-            // ossl_sm4_decrypt(assembly, inbuf, in_len, sm4_null_iv, priv->ctx);   
-            traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);      
-	        sm4_crypt_cbc( priv->ctx,0,in_len ,sm4_null_iv,inbuf, assembly);  
-        }
+	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,in_len-SM4_IV_SIZE,sm4_iv,inbuf+SM4_IV_SIZE,outbuf);
+
         len = in_len - SM4_PREAMBLE_SIZE;
-        memcpy(outbuf, assembly + SM4_PREAMBLE_SIZE, len);
     } else
         traceEvent(TRACE_ERROR, "transop_decode_sm4 inbuf wrong size (%ul) to decrypt", in_len);
 
@@ -165,24 +173,31 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
 }
 
 
-static int  setup_sm4_key (transop_sm4_t *priv, const uint8_t *password, ssize_t password_len) {
+static int setup_sm4_key (transop_sm4_t *priv, const uint8_t *password, ssize_t password_len) {
 
-    unsigned char   key_mat[32];     /* maximum aes key length, equals hash length */
-    unsigned char	*key;
+    unsigned char   key_mat[32];     /* maximum sm4 key length, equals hash length */
+    unsigned char   *key;
     size_t          key_size;
-    
+
+    // let the user choose the degree of encryption:
+    // long input passwords will pick AES192 or AES256 with more robust but expensive encryption
+
+    // the input password always gets hashed to make a more unpredictable use of the key space
+    // just think of usually reset MSB of ASCII coded password bytes
+    //sm3(password,password_len,key_mat);
     pearson_hash_256(key_mat, password, password_len);
-
-	key_size=SM4_BLOCK_SIZE;
-
-    // and use the last key-sized part of the hash as aes key
+    // the length-dependant scheme for key setup was discussed on github:
+    // https://github.com/ntop/n2n/issues/101 -- as no iv encryption required
+    //  anymore, the key-size trigger values were roughly halved
+    key_size = SM4_BLOCK_SIZE;       /* 128 bit */
+    // and use the last key-sized part of the hash as sm4 key
     key = key_mat + sizeof(key_mat) - key_size;
-    // memcpy(key,key_mat,16);
-   
+
     // setup the key and have corresponding context created
-    //sm4_setkey_enc( sm4_context *ctx, unsigned char key[16] );
-    	
-	sm4_setkey_enc( (priv->ctx), key);
+    sm4_setkey_enc(priv->ctx,key);
+    sm4_setkey_dec(priv->ctx,key);
+    traceEvent(TRACE_DEBUG, "setup_sm4_key %u-bit key setup completed", key_size * 8);
+	printf("sm4 key init fin\n");
 
     return 0;
 }
@@ -210,20 +225,13 @@ int n2n_transop_sm4_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
     ttt->rev          = transop_decode_sm4;
 
     priv = (transop_sm4_t*)calloc(1, sizeof(transop_sm4_t));
-    priv->ctx = calloc(1, sizeof(sm4_context_t));
-
     if(!priv) {
         traceEvent(TRACE_ERROR, "n2n_transop_sm4_init cannot allocate transop_sm4_t memory");
         return -1;
     }
-
-
-    if(!priv->ctx) {
-        traceEvent(TRACE_ERROR, "n2n_transop_sm4_init cannot allocate sm4_context_t memory");
-        return -1;
-    }
-
     ttt->priv = priv;
+    priv->ctx=malloc(sizeof(sm4_context_t));
+    printf("sm4 init start\n");
 
     // setup the cipher and key
     return setup_sm4_key(priv, encrypt_key, encrypt_key_len);

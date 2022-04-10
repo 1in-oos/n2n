@@ -79,7 +79,6 @@ static int transop_encode_aes (n2n_trans_op_t *arg,
 
     if(in_len <= N2N_PKT_BUF_SIZE) {
         if((in_len + AES_PREAMBLE_SIZE + AES_BLOCK_SIZE) <= out_len) {
-            traceEvent(TRACE_DEBUG, "transop_encode_aes %lu bytes plaintext", in_len);
 
             // full block sized random value (128 bit)
             encode_uint64(assembly, &idx, n2n_rand());
@@ -198,17 +197,16 @@ static int setup_aes_key (transop_aes_t *priv, const uint8_t *password, ssize_t 
     } else {
         key_size = AES128_KEY_BYTES;       /* 128 bit */
     }
-
+    traceEvent(TRACE_ERROR, "n2n_transop_sm4_init cannot allocate transop_sm4_t memory");
     // and use the last key-sized part of the hash as aes key
     key = key_mat + sizeof(key_mat) - key_size;
-
+    traceEvent(TRACE_ERROR, "n2n_transop_sm4_init cannot allocate transop_sm4_t memory");
     // setup the key and have corresponding context created
     if(aes_init (key, key_size, &(priv->ctx))) {
         traceEvent(TRACE_ERROR, "setup_aes_key %u-bit key setup unsuccessful", key_size * 8);
         return -1;
     }
     traceEvent(TRACE_DEBUG, "setup_aes_key %u-bit key setup completed", key_size * 8);
-
     return 0;
 }
 
