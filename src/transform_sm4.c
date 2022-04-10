@@ -141,46 +141,16 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
     uint8_t buf[SM4_BLOCK_SIZE];
     int len = -1;
 
-     if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly 密文适合汇编*/
+    if(((in_len - SM4_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly 密文适合汇编*/
       && (in_len >= SM4_PREAMBLE_SIZE)                     /* has at least random number至少有一个随机数*/
       && (in_len >= SM4_BLOCK_SIZE)) {                     /* minimum size requirement for cipher text stealing 密文获取的最小尺寸要求*/
         traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
 
-        rest = in_len % SM4_BLOCK_SIZE;
-        if(rest) { /* cipher text stealing 密文窃取*/
-            penultimate_block = ((in_len / SM4_BLOCK_SIZE) - 1) * SM4_BLOCK_SIZE;
+     
+        // regular cbc decryption on multiple block-sized payload多块大小有效负载上的常规cbc解密
+        // ossl_sm4_decrypt(assembly, inbuf, in_len, sm4_null_iv, priv->ctx);          
+	    sm4_crypt_cbc(priv->ctx,0,in_len ,sm4_null_iv,inbuf, assembly);  
 
-            // everything normal up to penultimate block  一切正常到倒数第二个街区
-            memcpy(assembly, inbuf, penultimate_block);
-
-            // prepare new penultimate block in buf 准备新的倒数第二块         
-  	        //  ossl_sm4_decrypt(buf, inbuf + penultimate_block, priv->ctx);
- 	        //  void sm4_crypt_ecb( sm4_context *ctx,int mode, int length, unsigned char *input,unsigned char *output);
- 	        sm4_crypt_ecb(priv->ctx,0,penultimate_block,inbuf+penultimate_block,buf);
-            memcpy(buf, inbuf + in_len - rest, rest);
-           
-            // former penultimate block becomes new ultimate block 前倒数第二个街区变成了新的终极街区
-            memcpy(assembly + penultimate_block + SM4_BLOCK_SIZE, inbuf + penultimate_block, SM4_BLOCK_SIZE);
-
-            // write new penultimate block from buf       从buf中写入新的倒数第二个块
-            memcpy(assembly + penultimate_block, buf, SM4_BLOCK_SIZE);
-
-            // regular cbc decryption of the re-arranged ciphertext//重新排列的密文的常规cbc解密
-            
-        	//ossl_sm4_decrypt(assembly, assembly, in_len + SM4_BLOCK_SIZE - rest, sm4_null_iv, priv->ctx);
-            //void sm4_crypt_cbc( sm4_context_t *ctx,int mode,int length,unsigned char iv[16],unsigned char *input,unsigned char *output );
-	        sm4_crypt_cbc( priv->ctx,0,in_len + SM4_BLOCK_SIZE - rest,sm4_null_iv,assembly, assembly);		
-		   
-            // check for expected zero padding and give a warning otherwise//检查预期的零填充，否则给出警告
-            if(memcmp(assembly + in_len, sm4_null_iv, SM4_BLOCK_SIZE - rest)) {
-                traceEvent(TRACE_WARNING, "transop_decode_sm4 payload decryption failed with unexpected cipher text stealing padding");//有效负载解密失败，密码文本被意外窃取
-                return -1;
-            }
-        } else {
-            // regular cbc decryption on multiple block-sized payload多块大小有效负载上的常规cbc解密
-            // ossl_sm4_decrypt(assembly, inbuf, in_len, sm4_null_iv, priv->ctx);          
-	        sm4_crypt_cbc( priv->ctx,0,in_len ,sm4_null_iv,inbuf, assembly);  
-        }
         len = in_len - SM4_PREAMBLE_SIZE;
         memcpy(outbuf, assembly + SM4_PREAMBLE_SIZE, len);
     } else
@@ -195,11 +165,6 @@ static int  setup_sm4_key (transop_sm4_t *priv, const uint8_t *password, ssize_t
     unsigned char   key_mat[32];     /* maximum aes key length, equals hash length */
     unsigned char	*key;
     size_t          key_size;
-    
-    pearson_hash_256(key_mat, password, password_len);
-
-	key_size=SM4_BLOCK_SIZE;
-
     // and use the last key-sized part of the hash as aes key
     key = key_mat + sizeof(key_mat) - key_size;
     // memcpy(key,key_mat,16);

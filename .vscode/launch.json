@@ -17,7 +17,7 @@
                 "mysecretpass",
                 "-A6",
                 "-a",
-                "10.0.0.5",
+                "10.0.0.1",
                 "-f",
                 "-l",
                 "supernode.ntop.org:7777"
