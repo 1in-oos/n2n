@@ -148,37 +148,12 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
 
         rest = in_len % SM4_BLOCK_SIZE;
         if(rest) { /* cipher text stealing 密文窃取*/
-            penultimate_block = ((in_len / SM4_BLOCK_SIZE) - 1) * SM4_BLOCK_SIZE;
-
-            // everything normal up to penultimate block  一切正常到倒数第二个街区
-            memcpy(assembly, inbuf, penultimate_block);
-
-            // prepare new penultimate block in buf 准备新的倒数第二块         
-  	        //  ossl_sm4_decrypt(buf, inbuf + penultimate_block, priv->ctx);
- 	        //  void sm4_crypt_ecb( sm4_context *ctx,int mode, int length, unsigned char *input,unsigned char *output);
- 	        sm4_crypt_ecb(priv->ctx,0,penultimate_block,inbuf+penultimate_block,buf);
-            memcpy(buf, inbuf + in_len - rest, rest);
-           
-            // former penultimate block becomes new ultimate block 前倒数第二个街区变成了新的终极街区
-            memcpy(assembly + penultimate_block + SM4_BLOCK_SIZE, inbuf + penultimate_block, SM4_BLOCK_SIZE);
-
-            // write new penultimate block from buf       从buf中写入新的倒数第二个块
-            memcpy(assembly + penultimate_block, buf, SM4_BLOCK_SIZE);
-
-            // regular cbc decryption of the re-arranged ciphertext//重新排列的密文的常规cbc解密
-            
-        	//ossl_sm4_decrypt(assembly, assembly, in_len + SM4_BLOCK_SIZE - rest, sm4_null_iv, priv->ctx);
-            //void sm4_crypt_cbc( sm4_context_t *ctx,int mode,int length,unsigned char iv[16],unsigned char *input,unsigned char *output );
-	        sm4_crypt_cbc( priv->ctx,0,in_len + SM4_BLOCK_SIZE - rest,sm4_null_iv,assembly, assembly);		
-		   
-            // check for expected zero padding and give a warning otherwise//检查预期的零填充，否则给出警告
-            if(memcmp(assembly + in_len, sm4_null_iv, SM4_BLOCK_SIZE - rest)) {
-                traceEvent(TRACE_WARNING, "transop_decode_sm4 payload decryption failed with unexpected cipher text stealing padding");//有效负载解密失败，密码文本被意外窃取
-                return -1;
-            }
+            traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
+            return -1;
         } else {
             // regular cbc decryption on multiple block-sized payload多块大小有效负载上的常规cbc解密
-            // ossl_sm4_decrypt(assembly, inbuf, in_len, sm4_null_iv, priv->ctx);          
+            // ossl_sm4_decrypt(assembly, inbuf, in_len, sm4_null_iv, priv->ctx);   
+            traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);      
 	        sm4_crypt_cbc( priv->ctx,0,in_len ,sm4_null_iv,inbuf, assembly);  
         }
         len = in_len - SM4_PREAMBLE_SIZE;
