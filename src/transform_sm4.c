@@ -87,33 +87,33 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             // full block sized random value (128 bit)
             //iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
 	        //encode_buf(outbuf, &idx, &iv_seed, SM4_IV_SIZE);
-            /*
+            
             printf("password is ");
 	        for(i=0;i<16;i++){
 		        printf("0x%02x ",priv->ctx->sk[i]);
 	        }
 	        printf("v len is %d\n",SM4_BLOCK_SIZE);
-            printf("\n");*/
+            printf("\n");
 
             encode_uint64(outbuf, &idx, n2n_rand());
             encode_uint64(outbuf, &idx, n2n_rand());
 	        memcpy(iv,outbuf,SM4_BLOCK_SIZE);
 	        idx=0;
-            /*
+            
 	        printf("iv is ");
 	        for(i=0;i<16;i++){
 		        printf("0x%02x ",iv[i]);
 	        }
 	        printf("v len is %d\n",SM4_BLOCK_SIZE);
-            printf("\n");*/
+            printf("\n");
             // the plaintext data
             encode_buf(assembly, &idx, inbuf, in_len);
-            /*
+            
             printf("assemblyf is ");
             for(i=0;i<in_len;i++){
                 printf("0x%02x ",assembly[i]);
             }
-            printf("\n");*/
+            printf("\n");
             padded_len = (((idx - 1) / SM4_BLOCK_SIZE) + 1) * SM4_BLOCK_SIZE;
             //padding = (padded_len-idx);
 
@@ -122,19 +122,19 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             memset(assembly + idx, 0, SM4_BLOCK_SIZE);
 
 	        sm4_crypt_cbc(priv->ctx,SM4_ENCRYPT,padded_len, iv,assembly,outbuf+SM4_IV_SIZE);
-	        /*
+	        
             printf("outbuf is ");
             for(i=0;i<padded_len+SM4_BLOCK_SIZE;i++){
                 printf("0x%02x ",outbuf[i]);
             }
-            printf("\n");*/
+            printf("\n");
         } else
             traceEvent(TRACE_ERROR, "transop_encode_sm4 outbuf too small");
     } else
     traceEvent(TRACE_ERROR, "transop_encode_sm4 inbuf too big to encrypt");
-    idx=idx+SM4_IV_SIZE;
+    //idx=idx+SM4_IV_SIZE;
 
-    return idx;
+    return padded_len+SM4_BLOCK_SIZE;
 }
 
 
@@ -162,33 +162,33 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
 	    printf("sm4 dec start\n");
         traceEvent(TRACE_DEBUG, "transop_decode_sm4 %lu bytes ciphertext", in_len);
 	    memcpy(ivde,inbuf,SM4_BLOCK_SIZE);
-        /*
         printf("inbuf is ");
 	        for( i=0;i<in_len;i++){
 		        printf("0x%02x ",inbuf[i]);
 	        }
 	    printf("inbuf len is %d\n",in_len);
-        printf("\n");*/
+        printf("\n");
         // the plaintext data
         memcpy(assembly,inbuf+SM4_BLOCK_SIZE,in_len-SM4_BLOCK_SIZE);
-        /*
+        
         printf("inbuf is ");
         for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
             printf("0x%02x ",assembly[i]);
         }
         printf("\n");
         printf("in len is %d\n",in_len-SM4_BLOCK_SIZE);
-        printf("\n");*/
-        padded_len = (((in_len - 1) / SM4_BLOCK_SIZE)) * SM4_BLOCK_SIZE;
-	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,padded_len,ivde,assembly,assembly);
-        /*
+        printf("\n");
+        
+
+	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,padded_len-SM4_BLOCK_SIZE,ivde,assembly,assembly);
+        
         printf("outbuf is ");
         for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
             printf("0x%02x ",assembly[i]);
         }
         printf("\n");
         printf("in len is %d\n",in_len-SM4_BLOCK_SIZE);
-        printf("\n");*/
+        printf("\n");
   
         memcpy(outbuf,assembly,in_len-SM4_BLOCK_SIZE);
         len = in_len - SM4_PREAMBLE_SIZE;
