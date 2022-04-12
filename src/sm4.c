@@ -303,7 +303,6 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 int sm4_deinit (sm4_context_t *ctx) {
 
     if(ctx) free(ctx);
-
     return 0;
 }
 
