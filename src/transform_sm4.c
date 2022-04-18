@@ -197,29 +197,30 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
             printf("0x%02x ",assembly[i]);
         }
         printf("\n");
-        memcpy(assembly,inbuf+SM4_BLOCK_SIZE,in_len-SM4_BLOCK_SIZE);
+        //memcpy(assembly,inbuf+SM4_BLOCK_SIZE,in_len-SM4_BLOCK_SIZE);
         
-        printf("assembly now is ");
-        for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
-            printf("0x%02x ",assembly[i]);
-        }
-        printf("\n");
-        printf("in len is %d\n",in_len-SM4_BLOCK_SIZE);
-        printf("\n");
+       
         memset(outbuf,0,sizeof(outbuf));
 		printf("outbuf before is ");
         for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
             printf("0x%02x ",outbuf[i]);
         }
         printf("\n");
-	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,in_len-SM4_BLOCK_SIZE,ivde,assembly,outbuf);
-        
-        printf("outbuf now is ");
+	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,in_len-SM4_BLOCK_SIZE,ivde,inbuf+SM4_BLOCK_SIZE,assembly);
+       
+		printf("assembly now is ");
+        for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
+            printf("0x%02x ",assembly[i]);
+        }
+        printf("\n");
+        printf("in len is %d\n",in_len-SM4_BLOCK_SIZE);
+        printf("\n");
+        memcpy(outbuf,assembly,in_len-SM4_BLOCK_SIZE);
+		printf("outbuf now is ");
         for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){
             printf("0x%02x ",outbuf[i]);
         }
         printf("\n");
-        //memcpy(outbuf,assembly,in_len-SM4_BLOCK_SIZE);
         len = in_len - SM4_PREAMBLE_SIZE;
     } else
         traceEvent(TRACE_ERROR, "transop_decode_sm4 inbuf wrong size (%ul) to decrypt", in_len);
