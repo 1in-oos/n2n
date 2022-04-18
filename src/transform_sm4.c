@@ -135,7 +135,11 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
             // pad the following bytes with zero, fixed length (AES_BLOCK_SIZE) seems to compile
             // to slightly faster code than run-time dependant 'padding'
             memset(assembly + idx, 0, SM4_BLOCK_SIZE);
-            
+            printf("key is ");
+            for(i=0;i<32;i++){
+                printf("0x%02x ",priv->ctx->sk[i]);
+            }
+            printf("\n");
 	        sm4_crypt_cbc(priv->ctx,SM4_ENCRYPT,padded_len, iv,assembly,outbuf+SM4_IV_SIZE);
 	        
             printf("outbuf now is ");
@@ -206,6 +210,10 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
             printf("0x%02x ",outbuf[i]);
         }
         printf("\n");
+		for(i=0;i<32;i++){
+                printf("0x%02x ",priv->ctx->sk[i]);
+            }
+            printf("\n");
 	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,in_len-SM4_BLOCK_SIZE,ivde,inbuf+SM4_BLOCK_SIZE,assembly);
        
 		printf("assembly now is ");

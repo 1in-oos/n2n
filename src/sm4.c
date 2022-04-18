@@ -259,8 +259,8 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
                     unsigned char *output )
 {
 	int i;
-	unsigned char temp[16];
-    unsigned char iv1[16];
+	unsigned char temp[16]={ 0 };
+    unsigned char iv1[16]={ 0 };
     memcpy(iv1,iv,16);
 	if ( mode == SM4_ENCRYPT )
 	{
