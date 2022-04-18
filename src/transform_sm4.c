@@ -140,7 +140,7 @@ static int transop_encode_sm4 (n2n_trans_op_t *arg,
                 printf("0x%02x ",priv->ctx->sk[i]);
             }
             printf("\n");
-	        sm4_crypt_cbc(priv->ctx,SM4_ENCRYPT,padded_len, iv,assembly,outbuf+SM4_IV_SIZE);
+	        sm4_crypt_xts(priv->ctx,SM4_ENCRYPT,padded_len, iv,assembly,outbuf+SM4_IV_SIZE);
 	        
             printf("outbuf now is ");
             for(i=0;i<padded_len+SM4_BLOCK_SIZE;i++){
@@ -214,7 +214,7 @@ static int transop_decode_sm4 (n2n_trans_op_t *arg,
                 printf("0x%02x ",priv->ctx->sk[i]);
             }
             printf("\n");
-	    sm4_crypt_cbc(priv->ctx,SM4_DECRYPT,in_len-SM4_BLOCK_SIZE,ivde,inbuf+SM4_BLOCK_SIZE,assembly);
+	    sm4_crypt_xts(priv->ctx,SM4_DECRYPT,in_len-SM4_BLOCK_SIZE,ivde,inbuf+SM4_BLOCK_SIZE,assembly);
        
 		printf("assembly now is ");
         for(i=0;i<in_len-SM4_BLOCK_SIZE;i++){

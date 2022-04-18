@@ -304,6 +304,270 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 	}
 }
 
+/*
+ * SM4 cfb mode
+ */
+void sm4_crypt_cfb( sm4_context_t *ctx,
+                    int mode,
+                    int length,
+                    unsigned char iv[16],
+                    unsigned char *input,
+                    unsigned char *output )
+      
+{
+    int i;
+	unsigned char temp[16]={ 0 };
+    unsigned char iv1[16]={ 0 };
+    memcpy(iv1,iv,16);
+	if ( mode == SM4_ENCRYPT )
+	{
+		while ( length > 0 )
+		{
+			sm4_one_round( ctx->sk, iv1, temp );
+			
+			for ( i = 0; i < 16; i++ )
+				output[i] = (unsigned char)( input[i] ^ temp[i] );
+			
+			memcpy( iv1, output, 16 );
+
+			input  += 16;
+			output += 16;
+			length -= 16;
+		}
+	}
+	else /* SM4_DECRYPT */
+	{
+		for ( i = 0; i < 16; i ++ )
+	{
+		SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+	}
+		while ( length > 0 )
+		{
+			sm4_one_round( ctx->sk, iv1, temp);
+			memcpy( iv1, input, 16 );
+			for ( i = 0; i < 16; i++ )
+				output[i] = (unsigned char)( input[i] ^ temp[i] );
+			
+			input  += 16;
+			output += 16;
+			length -= 16;
+		}
+		for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+	}
+}
+
+/*
+ * SM4 ofb mode
+ */
+void sm4_crypt_ofb( sm4_context_t *ctx,
+                    int mode,
+                    int length,
+                    unsigned char iv[16],
+                    unsigned char *input,
+                    unsigned char *output )
+{
+	int i;
+	unsigned char temp[16]={ 0 };
+	unsigned char iv1[16]={ 0 };
+	memcpy(iv1,iv,16);
+	if ( mode == SM4_ENCRYPT )
+	{
+		while ( length > 0 )
+		{
+			sm4_one_round( ctx->sk, iv1, temp );
+			memcpy( iv1, temp, 16 );
+			for ( i = 0; i < 16; i++ )
+				output[i] = (unsigned char)( input[i] ^ temp[i] );
+			
+			input  += 16;
+			output += 16;
+			length -= 16;
+		}
+	}
+	else /* SM4_DECRYPT */
+	{
+		for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+		while ( length > 0 )
+		{
+
+			sm4_one_round( ctx->sk, iv1, temp);
+			memcpy( iv1, temp, 16 );
+			for ( i = 0; i < 16; i++ )
+				output[i] = (unsigned char)( input[i] ^ temp[i] );
+			
+			input  += 16;
+			output += 16;
+			length -= 16;
+		}
+		for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+	}
+}
+
+/*
+ * SM4 ctr mode
+ */
+
+
+void sm4_crypt_ctr( sm4_context_t *ctx,
+                    int mode,
+                    int length,
+                    unsigned char iv[16],
+                    unsigned char *input,
+                    unsigned char *output )
+{
+		int i;
+		unsigned char temp[16]={ 0 };
+		unsigned char iv1[16]={ 0 };
+		memcpy(iv1,iv,16);
+		if ( mode == SM4_ENCRYPT )
+		{
+			while ( length > 0 )
+			{
+				sm4_one_round( ctx->sk, iv1, temp);
+				for ( i = 0; i < 16; i++ )
+					output[i] = (unsigned char)( input[i] ^ temp[i] );
+				//count ++
+        		for(i = 0; i < 16; i++)
+        		{
+           			iv1[i] ++;
+            		if(iv1[i] != 0)
+                		break;
+        		}	
+	
+				input  += 16;
+				output += 16;
+				length -= 16;
+			}
+		}
+		else /* SM4_DECRYPT */
+		{
+			for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+			while ( length > 0 )
+			{
+				sm4_one_round( ctx->sk, iv1, temp );
+	
+				for ( i = 0; i < 16; i++ )
+					output[i] = (unsigned char)( input[i] ^ temp[i] );
+				 //count ++
+        		for(i = 0; i < 16; i++)
+        		{
+            		iv1[i] ++;
+            		if(iv1[i] != 0)
+                	break;
+        		}
+	
+				input  += 16;
+				output += 16;
+				length -= 16;
+			}
+			for ( i = 0; i < 16; i ++ )
+			{
+				SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+			}
+		}
+}
+
+
+/*
+ * SM4 xts mode
+ */
+void sm4_crypt_xts(sm4_context_t *ctx,
+                int mode,
+                int length,
+                unsigned char iv[16],
+                unsigned char *input,
+                unsigned char *output )
+{
+
+    int i;
+    unsigned char pbIV[16];
+    unsigned char pbIV_pre[16];
+    unsigned char C_temp[16];
+    unsigned char P_temp[16];
+    unsigned char Cin;
+    unsigned char Cout;
+    
+    sm4_one_round(ctx->sk, iv, pbIV);
+    if( mode == SM4_ENCRYPT)   //encryption
+    {
+        while(length>0){
+        	//input xor T
+        	for( i = 0; i < 16; i++ )
+            	C_temp[i] = (unsigned char)( pbIV[i] ^ input[i] );
+        	//enc C get P
+        	sm4_one_round(ctx->sk, C_temp, P_temp);
+        	//T xor P
+        	for( i = 0; i < 16; i++ )
+            	output[i] = (unsigned char)( pbIV[i] ^ P_temp[i] );
+        	//LSFR
+       		Cin = 0;
+       		for(i = 0; i < 16; i++)
+        	{
+            	Cout = (pbIV[i] >> 7) & 1;
+            	pbIV[i] = ((pbIV[i] << 1) + Cin) & 0xff;
+            	Cin = Cout;
+        	}
+        	if(Cout)
+            	pbIV[0] ^= 0x87 ;
+			
+			input  += 16;
+			output += 16;
+			length -= 16;
+			
+    	}
+    }
+    else //dencryption
+    {
+    	for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+    	while(length>0){
+        	//input xor T
+        	for( i = 0; i < 16; i++ )
+            	C_temp[i] = (unsigned char)( pbIV[i] ^ input[i] );
+        	//dec C get P
+       		sm4_one_round(ctx->sk, C_temp, P_temp);
+        	//T xor P
+        	for( i = 0; i < 16; i++ )
+            	output[i] = (unsigned char)( pbIV[i] ^ P_temp[i] );
+       	 	//LSFR
+        	Cin = 0;
+        	for(i = 0; i < 16; i++)
+        	{
+            	Cout = (pbIV[i] >> 7) & 1;
+            	pbIV[i] = ((pbIV[i] << 1) + Cin) & 0xff;
+            	Cin = Cout;
+        	}
+        	if(Cout)
+            	pbIV[0] ^= 0x87 ;
+
+			input  += 16;
+			output += 16;
+			length -= 16;
+			
+    	}
+		for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
+    }
+}
+
+
+
 int sm4_deinit (sm4_context_t *ctx) {
 
     if(ctx) free(ctx);
