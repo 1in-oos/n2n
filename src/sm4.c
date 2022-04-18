@@ -297,6 +297,10 @@ void sm4_crypt_cbc( sm4_context_t *ctx,
 			output += 16;
 			length -= 16;
 		}
+		for ( i = 0; i < 16; i ++ )
+		{
+			SWAP( ctx->sk[ i ], ctx->sk[ 31 - i] );
+		}
 	}
 }
 
